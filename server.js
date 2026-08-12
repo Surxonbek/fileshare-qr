@@ -15,12 +15,17 @@ const FILE_TTL_MS = 30 * 60 * 1000;
 
 // Yuklangan fayllarni RAM'da saqlaymiz: { id: { buffer, mimetype, originalname, expiresAt } }
 const storedFiles = new Map();
+// Ko'p fayl uchun to'plamlar: { batchId: { files: [{id,name,size,mimetype}], expiresAt } }
+const batches = new Map();
 
 // Eskirgan fayllarni har 1 daqiqada tozalash
 setInterval(() => {
   const now = Date.now();
   for (const [id, file] of storedFiles.entries()) {
     if (file.expiresAt < now) storedFiles.delete(id);
+  }
+  for (const [id, batch] of batches.entries()) {
+    if (batch.expiresAt < now) batches.delete(id);
   }
 }, 60 * 1000);
 
@@ -39,35 +44,102 @@ function getBaseUrl(req) {
   return `${proto}://${req.get('host')}`;
 }
 
-// Fayl yuklash endpoint'i
-app.post('/upload', upload.single('file'), async (req, res) => {
+// Fayl(lar) yuklash endpoint'i - bir nechta fayl qo'llab-quvvatlanadi
+app.post('/upload', upload.array('files', 20), async (req, res) => {
   try {
-    if (!req.file) {
+    if (!req.files || req.files.length === 0) {
       return res.status(400).json({ error: 'Fayl topilmadi' });
     }
 
-    const id = uuidv4();
-    storedFiles.set(id, {
-      buffer: req.file.buffer,
-      mimetype: req.file.mimetype,
-      originalname: req.file.originalname,
-      expiresAt: Date.now() + FILE_TTL_MS,
-    });
+    const expiresAt = Date.now() + FILE_TTL_MS;
+    const filesMeta = [];
 
-    const downloadUrl = `${getBaseUrl(req)}/f/${id}`;
+    for (const f of req.files) {
+      const fid = uuidv4();
+      storedFiles.set(fid, {
+        buffer: f.buffer,
+        mimetype: f.mimetype,
+        originalname: f.originalname,
+        expiresAt,
+      });
+      filesMeta.push({ id: fid, name: f.originalname, size: f.size, mimetype: f.mimetype });
+    }
+
+    const batchId = uuidv4();
+    batches.set(batchId, { files: filesMeta, expiresAt });
+
+    const base = getBaseUrl(req);
+    const downloadUrl = `${base}/b/${batchId}`;
     const qrDataUrl = await QRCode.toDataURL(downloadUrl, { width: 320, margin: 2 });
 
     res.json({
-      id,
+      batchId,
       url: downloadUrl,
       qr: qrDataUrl,
       expiresInMinutes: FILE_TTL_MS / 60000,
+      files: filesMeta.map(f => ({ name: f.name, size: f.size, url: `${base}/f/${f.id}` })),
     });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server xatosi' });
   }
 });
+
+// Fayllar to'plamini ko'rish/yuklab olish sahifasi
+app.get('/b/:batchId', (req, res) => {
+  const batch = batches.get(req.params.batchId);
+  if (!batch || batch.expiresAt < Date.now()) {
+    return res
+      .status(404)
+      .send('<h2 style="font-family:sans-serif;text-align:center;margin-top:40px;color:#eee;background:#0a0e14;min-height:100vh;padding-top:1px">Havola topilmadi yoki muddati tugagan<br>Link not found or expired</h2>');
+  }
+
+  const base = getBaseUrl(req);
+  const rows = batch.files.map(f => `
+    <a class="file-row" href="${base}/f/${f.id}" download>
+      <div class="file-row-name">${escapeHtml(f.name)}</div>
+      <div class="file-row-size">${fmtBytes(f.size)}</div>
+    </a>
+  `).join('');
+
+  res.send(`<!DOCTYPE html>
+<html lang="uz"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fayllar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{ --bg:#060911; --surface:rgba(22,29,46,0.72); --surface2:#1e2740; --line:rgba(255,255,255,0.08);
+    --text:#f3f5fa; --text-dim:#8890a4; --accent:#4ff0a7; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;
+    display:flex;justify-content:center;padding:40px 16px}
+  .wrap{max-width:420px;width:100%}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:24px;margin:0 0 4px}
+  p{color:var(--text-dim);font-size:13.5px;margin:0 0 20px}
+  .card{background:var(--surface);backdrop-filter:blur(20px);border:1px solid var(--line);
+    border-radius:18px;padding:10px;box-shadow:0 8px 32px rgba(0,0,0,0.35)}
+  .file-row{display:flex;justify-content:space-between;align-items:center;padding:14px 12px;
+    border-radius:12px;text-decoration:none;color:var(--text)}
+  .file-row:active{background:var(--surface2)}
+  .file-row + .file-row{border-top:1px solid var(--line)}
+  .file-row-name{font-size:14px;font-weight:500;word-break:break-all;padding-right:10px}
+  .file-row-size{font-size:12px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;white-space:nowrap}
+</style></head>
+<body><div class="wrap">
+  <h1>${batch.files.length} ta fayl</h1>
+  <p>Yuklab olish uchun faylga bosing</p>
+  <div class="card">${rows}</div>
+</div></body></html>`);
+});
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function fmtBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1024*1024) return (b/1024).toFixed(0) + ' KB';
+  return (b/1024/1024).toFixed(1) + ' MB';
+}
 
 // Faylni yuklab olish / ko'rish endpoint'i
 app.get('/f/:id', (req, res) => {

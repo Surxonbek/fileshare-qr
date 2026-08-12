@@ -2,194 +2,370 @@
 <html lang="uz">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Fayl Yuborish - QR</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Uzat — fayl almashish</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: linear-gradient(160deg, #1e1b2e 0%, #2d2650 100%);
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
+  :root{
+    --bg-0: #060911;
+    --surface: rgba(22,29,46,0.72);
+    --surface-solid: #161d2e;
+    --surface-2: #1e2740;
+    --line: rgba(255,255,255,0.08);
+    --line-strong: rgba(255,255,255,0.14);
+    --text: #f3f5fa;
+    --text-dim: #8890a4;
+    --text-faint: #565f76;
+    --accent: #4ff0a7;
+    --accent-soft: rgba(79,240,167,0.12);
+    --accent-line: rgba(79,240,167,0.35);
+    --violet: #7c8cff;
+    --warn: #ff6b7d;
+    --mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+    --display: 'Space Grotesk', var(--sans);
+    --sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --r-lg: 20px;
+    --r-md: 14px;
+    --r-sm: 10px;
   }
-  .card {
-    background: #ffffff;
-    border-radius: 20px;
-    padding: 32px 24px;
-    max-width: 400px;
-    width: 100%;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.35);
-    text-align: center;
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background: var(--bg-0);
+    color:var(--text);
+    font-family:var(--sans);
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    padding: max(20px, env(safe-area-inset-top)) 16px max(28px, env(safe-area-inset-bottom));
+    position:relative;
+    overflow-x:hidden;
   }
-  h1 {
-    font-size: 22px;
-    margin: 0 0 6px;
-    color: #1e1b2e;
+  body::before, body::after{
+    content:""; position:fixed; border-radius:50%; filter:blur(80px); z-index:0; pointer-events:none;
   }
-  p.sub {
-    color: #6b6b7a;
-    font-size: 14px;
-    margin: 0 0 24px;
+  body::before{ width:340px; height:340px; background:radial-gradient(circle, rgba(79,240,167,0.22), transparent 70%); top:-120px; left:-80px; }
+  body::after{ width:300px; height:300px; background:radial-gradient(circle, rgba(124,140,255,0.16), transparent 70%); bottom:-100px; right:-60px; }
+  .app{ width:100%; max-width:420px; position:relative; z-index:1; }
+
+  .topbar{ display:flex; justify-content:flex-end; margin-bottom:6px; }
+  .lang-switch{
+    display:flex; background:var(--surface-solid); border:1px solid var(--line);
+    border-radius:10px; padding:3px; font-family:var(--mono); font-size:11.5px;
   }
-  .drop {
-    border: 2px dashed #c9c3f7;
-    border-radius: 14px;
-    padding: 28px 16px;
-    cursor: pointer;
-    transition: 0.2s;
-    background: #f8f7ff;
+  .lang-opt{
+    padding:6px 11px; border-radius:7px; color:var(--text-faint); cursor:pointer;
+    font-weight:600; letter-spacing:0.03em; transition:.15s;
   }
-  .drop:hover, .drop.dragover {
-    border-color: #7b5cf0;
-    background: #f0ecff;
+  .lang-opt.active{ background:var(--accent); color:#04140c; }
+
+  header{ text-align:center; margin-bottom:22px; margin-top:6px; }
+  .logo{
+    display:inline-flex; align-items:center; gap:7px; font-family:var(--mono); font-size:11.5px;
+    letter-spacing:0.16em; color:var(--text-faint); text-transform:uppercase;
   }
-  .drop svg { width: 36px; height: 36px; color: #7b5cf0; }
-  .drop-text { margin-top: 8px; color: #4a4560; font-size: 14px; }
-  input[type=file] { display: none; }
-  #fileName { margin-top: 10px; font-size: 13px; color: #7b5cf0; font-weight: 600; word-break: break-all; }
-  button.upload-btn {
-    margin-top: 20px;
-    width: 100%;
-    padding: 14px;
-    background: #7b5cf0;
-    color: white;
-    border: none;
-    border-radius: 12px;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: 0.2s;
+  .pulse{ position:relative; width:7px; height:7px; }
+  .pulse::before, .pulse::after{ content:""; position:absolute; inset:0; border-radius:50%; background:var(--accent); }
+  .pulse::after{ animation: ping 1.8s cubic-bezier(0,0,0.2,1) infinite; }
+  @keyframes ping{ 0%{ transform:scale(1); opacity:0.7 } 75%,100%{ transform:scale(2.6); opacity:0 } }
+
+  h1{
+    font-family:var(--display); font-size:29px; margin:10px 0 4px; font-weight:700;
+    letter-spacing:-0.02em; background:linear-gradient(135deg, #fff 30%, #a9b3c9 100%);
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
   }
-  button.upload-btn:disabled { background: #cfc9ef; cursor: not-allowed; }
-  button.upload-btn:not(:disabled):hover { background: #6a4de0; }
-  .result { margin-top: 24px; display: none; }
-  .result.show { display: block; }
-  .result img { width: 220px; height: 220px; border-radius: 12px; border: 1px solid #eee; }
-  .link-box {
-    margin-top: 14px;
-    background: #f8f7ff;
-    border-radius: 10px;
-    padding: 10px 12px;
-    font-size: 12px;
-    word-break: break-all;
-    color: #4a4560;
+  .tagline{ color:var(--text-dim); font-size:13.5px; margin:0; }
+
+  .card{
+    background:var(--surface); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+    border:1px solid var(--line); border-radius:var(--r-lg); padding:22px;
+    box-shadow:0 8px 32px rgba(0,0,0,0.35);
   }
-  .expiry { margin-top: 10px; font-size: 12px; color: #a09bb5; }
-  .progress { margin-top: 16px; height: 6px; background: #eee; border-radius: 4px; overflow: hidden; display: none; }
-  .progress.show { display: block; }
-  .progress-bar { height: 100%; width: 0%; background: #7b5cf0; transition: width 0.2s; }
-  .error { color: #e0435f; font-size: 13px; margin-top: 12px; display: none; }
+
+  .drop{
+    border:1.5px dashed var(--line-strong); border-radius:var(--r-md); padding:34px 16px;
+    text-align:center; cursor:pointer; transition:.18s; display:block;
+  }
+  .drop:active, .drop.drag{ border-color:var(--accent-line); background:var(--accent-soft); }
+  .drop-icon{
+    width:52px; height:52px; margin:0 auto; border-radius:16px; background:var(--surface-2);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .drop-icon svg{ width:24px; height:24px; color:var(--accent); }
+  .drop-label{ margin-top:14px; font-size:14.5px; color:var(--text); font-weight:600; }
+  .drop-sub{ margin-top:3px; font-size:12px; color:var(--text-faint); }
+  .drop .fname{ margin-top:12px; font-size:13px; color:var(--accent); font-weight:600; word-break:break-all; }
+  input[type=file]{ display:none; }
+
+  .file-list{ margin-top:12px; }
+  .file-item{
+    display:flex; justify-content:space-between; align-items:center; gap:10px;
+    padding:10px 12px; background:var(--surface-2); border-radius:10px; margin-top:6px;
+  }
+  .file-item-name{ font-size:12.5px; color:var(--text); word-break:break-all; }
+  .file-item-size{ font-size:11px; color:var(--text-faint); font-family:var(--mono); white-space:nowrap; }
+  .file-item-remove{
+    width:20px; height:20px; border-radius:50%; background:rgba(255,107,125,0.12); color:var(--warn);
+    display:flex; align-items:center; justify-content:center; font-size:13px; cursor:pointer; flex-shrink:0;
+  }
+  .file-list-summary{ font-size:11.5px; color:var(--text-faint); margin-top:8px; text-align:center; }
+
+  .btn{
+    width:100%; padding:15px; border:none; border-radius:var(--r-sm);
+    font-size:15px; font-weight:700; cursor:pointer; margin-top:14px;
+    transition:.15s; font-family:var(--sans);
+  }
+  .btn-primary{ background:var(--accent); color:#04140c; box-shadow:0 6px 20px rgba(79,240,167,0.25); }
+  .btn-primary:disabled{ background:var(--surface-2); color:var(--text-faint); box-shadow:none; cursor:not-allowed; }
+  .btn-primary:not(:disabled):active{ transform:scale(0.97); }
+
+  .progress-wrap{ display:none; margin-top:14px; }
+  .progress-wrap.show{ display:block; }
+  .progress-track{ height:6px; background:var(--surface-2); border-radius:6px; overflow:hidden; }
+  .progress-fill{ height:100%; width:0%; background:linear-gradient(90deg, var(--accent), var(--violet)); transition:width .2s; border-radius:6px; }
+  .progress-label{ font-size:11.5px; color:var(--text-faint); margin-top:6px; text-align:center; font-family:var(--mono); }
+
+  .result{ display:none; text-align:center; margin-top:20px; }
+  .result.show{ display:block; animation: fade .3s ease; }
+  @keyframes fade{ from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:translateY(0)} }
+  .qr-wrap{
+    display:inline-block; padding:16px; background:#fff; border-radius:18px;
+    position:relative; overflow:hidden; box-shadow:0 12px 30px rgba(0,0,0,0.4);
+  }
+  .qr-wrap::after{
+    content:""; position:absolute; left:0; right:0; height:2px;
+    background:linear-gradient(90deg, transparent, #04140c, transparent);
+    opacity:0.5; top:0; animation: scan 2.4s linear infinite;
+  }
+  @keyframes scan{ 0%{ top:0 } 50%{ top:100% } 100%{ top:0 } }
+  #qrImage{ width:206px; height:206px; display:block; }
+
+  .link-box{
+    margin-top:16px; background:var(--surface-2); border:1px solid var(--line); border-radius:var(--r-sm);
+    padding:12px 14px; font-family:var(--mono); font-size:11.5px; word-break:break-all; color:var(--text-dim);
+  }
+  .expiry{ font-size:11.5px; color:var(--text-faint); margin-top:12px; }
+
+  .err{ display:none; color:var(--warn); font-size:13px; margin-top:14px; text-align:center; line-height:1.5; }
+  .err.show{ display:block; }
+
+  .privacy{ font-size:11px; color:var(--text-faint); text-align:center; margin-top:18px; line-height:1.6; padding:0 8px; }
+  .footer-credit{ text-align:center; margin-top:24px; font-family:var(--mono); font-size:11px; color:var(--text-faint); letter-spacing:0.04em; }
+  .footer-credit span{ color:var(--accent); }
+
+  .spinner{ width:15px; height:15px; border:2px solid rgba(4,20,12,0.25); border-top-color:#04140c; border-radius:50%; display:inline-block; animation:spin .7s linear infinite; vertical-align:-3px; margin-right:7px; }
+  @keyframes spin{ to{ transform:rotate(360deg) } }
 </style>
 </head>
 <body>
-  <div class="card">
-    <h1>Fayl Yuborish</h1>
-    <p class="sub">Faylni tanla — QR kod chiqadi, boshqa telefon kamerasi bilan skanerlaydi</p>
+<div class="app">
+  <div class="topbar">
+    <div class="lang-switch">
+      <div class="lang-opt active" data-lang="uz">UZ</div>
+      <div class="lang-opt" data-lang="en">EN</div>
+    </div>
+  </div>
 
+  <header>
+    <div class="logo"><span class="pulse"></span><span data-i18n="kicker">Peer-to-peer transfer</span></div>
+    <h1>Uzat</h1>
+    <p class="tagline" data-i18n="tagline">Fayl yuklaydi — QR kod chiqaradi</p>
+  </header>
+
+  <div class="card">
     <label class="drop" id="dropZone">
-      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v12m0-12l-4 4m4-4l4 4M4 20h16"/></svg>
-      <div class="drop-text">Fayl tanlash uchun bosing</div>
-      <div id="fileName"></div>
-      <input type="file" id="fileInput" />
+      <span class="drop-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v12m0-12l-4 4m4-4l4 4M4 20h16"/></svg></span>
+      <div class="drop-label" data-i18n="dropLabel">Fayl yoki rasm tanlash</div>
+      <div class="drop-sub" data-i18n="dropSub">Bir nechtasini birdan tanlashingiz mumkin · 500MB gacha</div>
+      <input type="file" id="fileInput" multiple />
     </label>
 
-    <div class="progress" id="progress"><div class="progress-bar" id="progressBar"></div></div>
-    <div class="error" id="errorBox"></div>
+    <div class="file-list" id="fileList"></div>
 
-    <button class="upload-btn" id="uploadBtn" disabled>Yuklash va QR yaratish</button>
+    <button class="btn btn-primary" id="uploadBtn" disabled data-i18n="uploadBtn">Yuklash va QR yaratish</button>
+
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-label" id="progressLabel">0%</div>
+    </div>
+
+    <div class="err" id="errorBox"></div>
 
     <div class="result" id="result">
-      <img id="qrImage" src="" alt="QR kod" />
+      <div class="qr-wrap"><img id="qrImage" src="" alt="QR" /></div>
       <div class="link-box" id="linkBox"></div>
       <div class="expiry" id="expiryText"></div>
     </div>
   </div>
 
+  <div class="privacy" data-i18n="privacy">Havola belgilangan vaqtdan keyin avtomatik o'chib ketadi.</div>
+  <div class="footer-credit">Made by <span>Surxonbek</span></div>
+</div>
+
 <script>
+const I18N = {
+  uz: {
+    kicker: 'Peer-to-peer transfer',
+    tagline: "Fayl yuklaydi — QR kod chiqaradi",
+    dropLabel: 'Fayl yoki rasm tanlash',
+    dropSub: 'Bir nechtasini birdan tanlashingiz mumkin · 500MB gacha',
+    uploadBtn: 'Yuklash va QR yaratish',
+    uploading: 'Yuklanmoqda...',
+    privacy: "Havola belgilangan vaqtdan keyin avtomatik o'chib ketadi.",
+    expiryPrefix: 'Havola',
+    expirySuffix: "daqiqadan keyin o'chib ketadi",
+    errTooBig: 'Fayl juda katta',
+    errGeneric: "Xatolik yuz berdi. Qayta urinib ko'ring.",
+    errNetwork: 'Tarmoq xatosi. Internetni tekshiring.',
+    filesSelected: 'ta fayl tanlandi'
+  },
+  en: {
+    kicker: 'Peer-to-peer transfer',
+    tagline: 'Upload files — get a QR code',
+    dropLabel: 'Choose files or photos',
+    dropSub: 'Select multiple at once · Up to 500MB',
+    uploadBtn: 'Upload & generate QR',
+    uploading: 'Uploading...',
+    privacy: 'The link expires automatically after the shown time.',
+    expiryPrefix: 'Link expires in',
+    expirySuffix: 'minutes',
+    errTooBig: 'File is too large',
+    errGeneric: 'Something went wrong. Please try again.',
+    errNetwork: 'Network error. Check your connection.',
+    filesSelected: 'files selected'
+  }
+};
+let currentLang = 'uz';
+
+function applyLang(lang) {
+  currentLang = lang;
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (I18N[lang][key]) el.textContent = I18N[lang][key];
+  });
+  document.querySelectorAll('.lang-opt').forEach(o => o.classList.toggle('active', o.dataset.lang === lang));
+  renderFileList();
+}
+document.querySelectorAll('.lang-opt').forEach(opt => {
+  opt.addEventListener('click', () => applyLang(opt.dataset.lang));
+});
+
 const fileInput = document.getElementById('fileInput');
-const dropZone = document.getElementById('dropZone');
-const fileName = document.getElementById('fileName');
+const fileListEl = document.getElementById('fileList');
 const uploadBtn = document.getElementById('uploadBtn');
 const result = document.getElementById('result');
 const qrImage = document.getElementById('qrImage');
 const linkBox = document.getElementById('linkBox');
 const expiryText = document.getElementById('expiryText');
-const progress = document.getElementById('progress');
-const progressBar = document.getElementById('progressBar');
+const progressWrap = document.getElementById('progressWrap');
+const progressFill = document.getElementById('progressFill');
+const progressLabel = document.getElementById('progressLabel');
 const errorBox = document.getElementById('errorBox');
 
-let selectedFile = null;
+let selectedFiles = [];
+const MAX_TOTAL_BYTES = 500 * 1024 * 1024;
+
+function fmtSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(0) + ' KB';
+  return (bytes/1024/1024).toFixed(1) + ' MB';
+}
+
+function renderFileList() {
+  fileListEl.innerHTML = '';
+  selectedFiles.forEach((f, idx) => {
+    const row = document.createElement('div');
+    row.className = 'file-item';
+    row.innerHTML =
+      '<div class="file-item-name">' + f.name + '</div>' +
+      '<div style="display:flex;align-items:center;gap:8px;">' +
+        '<div class="file-item-size">' + fmtSize(f.size) + '</div>' +
+        '<div class="file-item-remove" data-idx="' + idx + '">✕</div>' +
+      '</div>';
+    fileListEl.appendChild(row);
+  });
+  fileListEl.querySelectorAll('.file-item-remove').forEach(btn => {
+    btn.addEventListener('click', () => {
+      selectedFiles.splice(Number(btn.dataset.idx), 1);
+      updateUploadState();
+    });
+  });
+}
+
+function updateUploadState() {
+  renderFileList();
+  uploadBtn.disabled = selectedFiles.length === 0;
+  result.classList.remove('show');
+  errorBox.classList.remove('show');
+}
 
 fileInput.addEventListener('change', () => {
-  if (fileInput.files.length) {
-    selectedFile = fileInput.files[0];
-    fileName.textContent = selectedFile.name;
-    uploadBtn.disabled = false;
-    result.classList.remove('show');
-    errorBox.style.display = 'none';
+  const newFiles = Array.from(fileInput.files);
+  selectedFiles = selectedFiles.concat(newFiles);
+  const total = selectedFiles.reduce((s, f) => s + f.size, 0);
+  if (total > MAX_TOTAL_BYTES) {
+    errorBox.textContent = I18N[currentLang].errTooBig + ' (' + fmtSize(total) + '). Limit: 500MB.';
+    errorBox.classList.add('show');
+    selectedFiles = selectedFiles.slice(0, -newFiles.length);
   }
+  fileInput.value = '';
+  updateUploadState();
 });
 
 uploadBtn.addEventListener('click', async () => {
-  if (!selectedFile) return;
-  errorBox.style.display = 'none';
+  if (selectedFiles.length === 0) return;
+  errorBox.classList.remove('show');
   uploadBtn.disabled = true;
-  uploadBtn.textContent = 'Yuklanmoqda...';
-  progress.classList.add('show');
-  progressBar.style.width = '0%';
+  uploadBtn.innerHTML = '<span class="spinner"></span>' + I18N[currentLang].uploading;
+  progressWrap.classList.add('show');
+  progressFill.style.width = '0%';
+  progressLabel.textContent = '0%';
 
   const formData = new FormData();
-  formData.append('file', selectedFile);
+  selectedFiles.forEach(f => formData.append('files', f));
 
-  try {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', '/upload');
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/upload');
 
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable) {
-        const pct = Math.round((e.loaded / e.total) * 100);
-        progressBar.style.width = pct + '%';
-      }
-    };
+  xhr.upload.onprogress = (e) => {
+    if (e.lengthComputable) {
+      const pct = Math.round((e.loaded / e.total) * 100);
+      progressFill.style.width = pct + '%';
+      progressLabel.textContent = pct + '%';
+    }
+  };
 
-    xhr.onload = () => {
-      progress.classList.remove('show');
-      uploadBtn.disabled = false;
-      uploadBtn.textContent = 'Yuklash va QR yaratish';
-
-      if (xhr.status !== 200) {
-        errorBox.textContent = 'Xatolik yuz berdi. Qayta urinib ko\'ring.';
-        errorBox.style.display = 'block';
-        return;
-      }
-
-      const data = JSON.parse(xhr.responseText);
-      qrImage.src = data.qr;
-      linkBox.textContent = data.url;
-      expiryText.textContent = `Havola ${data.expiresInMinutes} daqiqadan keyin o'chib ketadi`;
-      result.classList.add('show');
-    };
-
-    xhr.onerror = () => {
-      progress.classList.remove('show');
-      uploadBtn.disabled = false;
-      uploadBtn.textContent = 'Yuklash va QR yaratish';
-      errorBox.textContent = 'Tarmoq xatosi. Internetni tekshiring.';
-      errorBox.style.display = 'block';
-    };
-
-    xhr.send(formData);
-  } catch (err) {
-    progress.classList.remove('show');
+  xhr.onload = () => {
+    progressWrap.classList.remove('show');
     uploadBtn.disabled = false;
-    uploadBtn.textContent = 'Yuklash va QR yaratish';
-    errorBox.textContent = 'Xatolik: ' + err.message;
-    errorBox.style.display = 'block';
-  }
+    uploadBtn.textContent = I18N[currentLang].uploadBtn;
+
+    if (xhr.status !== 200) {
+      errorBox.textContent = I18N[currentLang].errGeneric;
+      errorBox.classList.add('show');
+      return;
+    }
+
+    const data = JSON.parse(xhr.responseText);
+    qrImage.src = data.qr;
+    linkBox.textContent = data.url;
+    expiryText.textContent = I18N[currentLang].expiryPrefix + ' ' + data.expiresInMinutes + ' ' + I18N[currentLang].expirySuffix;
+    result.classList.add('show');
+  };
+
+  xhr.onerror = () => {
+    progressWrap.classList.remove('show');
+    uploadBtn.disabled = false;
+    uploadBtn.textContent = I18N[currentLang].uploadBtn;
+    errorBox.textContent = I18N[currentLang].errNetwork;
+    errorBox.classList.add('show');
+  };
+
+  xhr.send(formData);
 });
 </script>
 </body>
