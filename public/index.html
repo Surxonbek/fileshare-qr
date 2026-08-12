@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fayl Yuborish - QR</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: linear-gradient(160deg, #1e1b2e 0%, #2d2650 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .card {
+    background: #ffffff;
+    border-radius: 20px;
+    padding: 32px 24px;
+    max-width: 400px;
+    width: 100%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+    text-align: center;
+  }
+  h1 {
+    font-size: 22px;
+    margin: 0 0 6px;
+    color: #1e1b2e;
+  }
+  p.sub {
+    color: #6b6b7a;
+    font-size: 14px;
+    margin: 0 0 24px;
+  }
+  .drop {
+    border: 2px dashed #c9c3f7;
+    border-radius: 14px;
+    padding: 28px 16px;
+    cursor: pointer;
+    transition: 0.2s;
+    background: #f8f7ff;
+  }
+  .drop:hover, .drop.dragover {
+    border-color: #7b5cf0;
+    background: #f0ecff;
+  }
+  .drop svg { width: 36px; height: 36px; color: #7b5cf0; }
+  .drop-text { margin-top: 8px; color: #4a4560; font-size: 14px; }
+  input[type=file] { display: none; }
+  #fileName { margin-top: 10px; font-size: 13px; color: #7b5cf0; font-weight: 600; word-break: break-all; }
+  button.upload-btn {
+    margin-top: 20px;
+    width: 100%;
+    padding: 14px;
+    background: #7b5cf0;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+  button.upload-btn:disabled { background: #cfc9ef; cursor: not-allowed; }
+  button.upload-btn:not(:disabled):hover { background: #6a4de0; }
+  .result { margin-top: 24px; display: none; }
+  .result.show { display: block; }
+  .result img { width: 220px; height: 220px; border-radius: 12px; border: 1px solid #eee; }
+  .link-box {
+    margin-top: 14px;
+    background: #f8f7ff;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 12px;
+    word-break: break-all;
+    color: #4a4560;
+  }
+  .expiry { margin-top: 10px; font-size: 12px; color: #a09bb5; }
+  .progress { margin-top: 16px; height: 6px; background: #eee; border-radius: 4px; overflow: hidden; display: none; }
+  .progress.show { display: block; }
+  .progress-bar { height: 100%; width: 0%; background: #7b5cf0; transition: width 0.2s; }
+  .error { color: #e0435f; font-size: 13px; margin-top: 12px; display: none; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Fayl Yuborish</h1>
+    <p class="sub">Faylni tanla — QR kod chiqadi, boshqa telefon kamerasi bilan skanerlaydi</p>
+
+    <label class="drop" id="dropZone">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v12m0-12l-4 4m4-4l4 4M4 20h16"/></svg>
+      <div class="drop-text">Fayl tanlash uchun bosing</div>
+      <div id="fileName"></div>
+      <input type="file" id="fileInput" />
+    </label>
+
+    <div class="progress" id="progress"><div class="progress-bar" id="progressBar"></div></div>
+    <div class="error" id="errorBox"></div>
+
+    <button class="upload-btn" id="uploadBtn" disabled>Yuklash va QR yaratish</button>
+
+    <div class="result" id="result">
+      <img id="qrImage" src="" alt="QR kod" />
+      <div class="link-box" id="linkBox"></div>
+      <div class="expiry" id="expiryText"></div>
+    </div>
+  </div>
+
+<script>
+const fileInput = document.getElementById('fileInput');
+const dropZone = document.getElementById('dropZone');
+const fileName = document.getElementById('fileName');
+const uploadBtn = document.getElementById('uploadBtn');
+const result = document.getElementById('result');
+const qrImage = document.getElementById('qrImage');
+const linkBox = document.getElementById('linkBox');
+const expiryText = document.getElementById('expiryText');
+const progress = document.getElementById('progress');
+const progressBar = document.getElementById('progressBar');
+const errorBox = document.getElementById('errorBox');
+
+let selectedFile = null;
+
+fileInput.addEventListener('change', () => {
+  if (fileInput.files.length) {
+    selectedFile = fileInput.files[0];
+    fileName.textContent = selectedFile.name;
+    uploadBtn.disabled = false;
+    result.classList.remove('show');
+    errorBox.style.display = 'none';
+  }
+});
+
+uploadBtn.addEventListener('click', async () => {
+  if (!selectedFile) return;
+  errorBox.style.display = 'none';
+  uploadBtn.disabled = true;
+  uploadBtn.textContent = 'Yuklanmoqda...';
+  progress.classList.add('show');
+  progressBar.style.width = '0%';
+
+  const formData = new FormData();
+  formData.append('file', selectedFile);
+
+  try {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/upload');
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const pct = Math.round((e.loaded / e.total) * 100);
+        progressBar.style.width = pct + '%';
+      }
+    };
+
+    xhr.onload = () => {
+      progress.classList.remove('show');
+      uploadBtn.disabled = false;
+      uploadBtn.textContent = 'Yuklash va QR yaratish';
+
+      if (xhr.status !== 200) {
+        errorBox.textContent = 'Xatolik yuz berdi. Qayta urinib ko\'ring.';
+        errorBox.style.display = 'block';
+        return;
+      }
+
+      const data = JSON.parse(xhr.responseText);
+      qrImage.src = data.qr;
+      linkBox.textContent = data.url;
+      expiryText.textContent = `Havola ${data.expiresInMinutes} daqiqadan keyin o'chib ketadi`;
+      result.classList.add('show');
+    };
+
+    xhr.onerror = () => {
+      progress.classList.remove('show');
+      uploadBtn.disabled = false;
+      uploadBtn.textContent = 'Yuklash va QR yaratish';
+      errorBox.textContent = 'Tarmoq xatosi. Internetni tekshiring.';
+      errorBox.style.display = 'block';
+    };
+
+    xhr.send(formData);
+  } catch (err) {
+    progress.classList.remove('show');
+    uploadBtn.disabled = false;
+    uploadBtn.textContent = 'Yuklash va QR yaratish';
+    errorBox.textContent = 'Xatolik: ' + err.message;
+    errorBox.style.display = 'block';
+  }
+});
+</script>
+</body>
+</html>
