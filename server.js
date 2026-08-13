@@ -95,12 +95,21 @@ app.get('/b/:batchId', (req, res) => {
   }
 
   const base = getBaseUrl(req);
-  const rows = batch.files.map(f => `
+  const rows = batch.files.map(f => {
+    const isImage = f.mimetype && f.mimetype.startsWith('image/');
+    const thumb = isImage
+      ? `<img class="file-thumb" src="${base}/f/${f.id}" alt="" />`
+      : `<div class="file-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>`;
+    const nameLine = isImage ? '' : `<div class="file-row-name">${escapeHtml(f.name)}</div>`;
+    return `
     <a class="file-row" href="${base}/f/${f.id}" download>
-      <div class="file-row-name">${escapeHtml(f.name)}</div>
-      <div class="file-row-size">${fmtBytes(f.size)}</div>
-    </a>
-  `).join('');
+      ${thumb}
+      <div class="file-row-info">
+        ${nameLine}
+        <div class="file-row-size">${fmtBytes(f.size)}</div>
+      </div>
+    </a>`;
+  }).join('');
 
   res.send(`<!DOCTYPE html>
 <html lang="uz"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -118,12 +127,16 @@ app.get('/b/:batchId', (req, res) => {
   p{color:var(--text-dim);font-size:13.5px;margin:0 0 20px}
   .card{background:var(--surface);backdrop-filter:blur(20px);border:1px solid var(--line);
     border-radius:18px;padding:10px;box-shadow:0 8px 32px rgba(0,0,0,0.35)}
-  .file-row{display:flex;justify-content:space-between;align-items:center;padding:14px 12px;
+  .file-row{display:flex;align-items:center;gap:12px;padding:10px;
     border-radius:12px;text-decoration:none;color:var(--text)}
   .file-row:active{background:var(--surface2)}
   .file-row + .file-row{border-top:1px solid var(--line)}
-  .file-row-name{font-size:14px;font-weight:500;word-break:break-all;padding-right:10px}
-  .file-row-size{font-size:12px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;white-space:nowrap}
+  .file-thumb{width:52px;height:52px;border-radius:10px;object-fit:cover;flex-shrink:0;background:var(--surface2)}
+  .file-icon{width:52px;height:52px;border-radius:10px;background:var(--surface2);color:var(--accent);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .file-row-info{min-width:0;flex:1}
+  .file-row-name{font-size:13.5px;font-weight:500;word-break:break-all}
+  .file-row-size{font-size:12px;color:var(--text-dim);font-family:'JetBrains Mono',monospace}
 </style></head>
 <body><div class="wrap">
   <h1>${batch.files.length} ta fayl</h1>
