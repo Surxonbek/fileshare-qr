@@ -196,7 +196,6 @@
 
     <div class="result" id="result">
       <div class="qr-wrap"><img id="qrImage" src="" alt="QR" /></div>
-      <div class="link-box" id="linkBox"></div>
       <div class="expiry" id="expiryText"></div>
     </div>
   </div>
@@ -259,7 +258,6 @@ const fileListEl = document.getElementById('fileList');
 const uploadBtn = document.getElementById('uploadBtn');
 const result = document.getElementById('result');
 const qrImage = document.getElementById('qrImage');
-const linkBox = document.getElementById('linkBox');
 const expiryText = document.getElementById('expiryText');
 const progressWrap = document.getElementById('progressWrap');
 const progressFill = document.getElementById('progressFill');
@@ -352,7 +350,6 @@ uploadBtn.addEventListener('click', async () => {
 
     const data = JSON.parse(xhr.responseText);
     qrImage.src = data.qr;
-    linkBox.textContent = data.url;
     expiryText.textContent = I18N[currentLang].expiryPrefix + ' ' + data.expiresInMinutes + ' ' + I18N[currentLang].expirySuffix;
     result.classList.add('show');
   };
